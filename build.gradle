@@ -1,0 +1,80 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+plugins {
+    id 'distribution'
+    id 'signing'
+    alias(libs.plugins.nexus.publish)
+    alias(libs.plugins.kotlin.jvm) apply(false)
+    alias(libs.plugins.shadow) apply(false)
+}
+
+tasks.register("buildDocumentation", Exec) {
+    inputs.dir 'docs/md'
+    inputs.file 'docs/mkdocs.yml'
+    outputs.dir 'docs/html'
+    executable 'sh'
+    args '-c', "docker run --volume $rootDir/docs:/docs --rm squidfunk/mkdocs-material:5.2.2 build"
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl = uri("https://ossrh-staging-api.central.sonatype.com/service/local/")
+            username = findProperty('PROGUARD_STAGING_USERNAME')
+            password = findProperty('PROGUARD_STAGING_PASSWORD')
+        }
+    }
+}
+
+configurations {
+    distLibs {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    distLibs project(path: ':proguard-app', configuration: 'jarDistribution')
+    distLibs project(path: ':gui', configuration: 'jarDistribution')
+    distLibs project(path: ':retrace', configuration: 'jarDistribution')
+    distLibs project(path: ':ant', configuration: 'jarDistribution')
+}
+
+distributions {
+    main {
+        distributionBaseName.set('proguard')
+        contents {
+            into("lib") {
+                from(configurations.distLibs)
+            }
+            into('docs') {
+                from('docs/md') {
+                    includeEmptyDirs = false
+                    include '**/*.md'
+                }
+            }
+            from(rootDir) {
+                include 'bin/'
+                include 'examples/'
+                exclude 'examples/*/build'
+                exclude 'examples/*/.gradle'
+                include 'LICENSE'
+                include 'LICENSE_exception.md'
+            }
+        }
+    }
+}
+
+distTar {
+    compression = Compression.GZIP
+    archiveExtension.set('tar.gz')
+}
+
+clean {
+    delete file("$rootDir/lib")
+// TODO docker runs as root, so cannot clean the HTML yet
+//    delete buildDocumentation.outputs
+}
+

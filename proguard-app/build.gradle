@@ -1,0 +1,40 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
+plugins {
+    id 'com.gradleup.shadow'
+    id 'java'
+    id 'application'
+    id 'proguard.conventions'
+}
+
+application {
+    mainClass = 'proguard.ProGuard'
+}
+
+dependencies {
+   implementation project(':base')
+}
+
+jar.manifest.attributes('Implementation-Version': version)
+
+def shadowJar = tasks.named('shadowJar', ShadowJar) {
+    destinationDirectory.set(file("$rootDir/lib"))
+    archiveFileName.set('proguard.jar')
+    manifest {
+        attributes(
+                'Main-Class': 'proguard.ProGuard',
+                'Multi-Release': true,
+        )
+    }
+}
+
+configurations {
+    jarDistribution {
+        canBeConsumed = true
+        canBeResolved = false
+    }
+}
+
+artifacts {
+    jarDistribution shadowJar
+}

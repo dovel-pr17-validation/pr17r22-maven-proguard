@@ -1,0 +1,33 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        google()
+    }
+}
+
+rootProject.name = 'proguard'
+
+includeBuild 'build-logic'
+
+include 'base'
+include 'proguard-app'
+include 'retrace'
+include 'gui'
+include 'gradle-plugin'
+include 'ant'
+include 'annotations'
+
+project(':gradle-plugin').name = 'gradle'
+
+gradle.beforeProject { project ->
+    project.group = 'com.guardsquare'
+    project.version = providers.gradleProperty('proguardVersion').get()
+}
